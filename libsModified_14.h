@@ -1,12 +1,18 @@
+#include "drivers\hitechnic-gyro.h";
+#include "drivers\hitechnic-irseeker-v2.h"
+
 //Software designed by John Stegman
 //Adapted and revised by 6299 Quad X
 //Expanded and documented by 6210 Stryke
 
 //Gyroscope Autonomous Method Library
 
-#include "drivers\hitechnic-gyro.h";
-#include "drivers\hitechnic-irseeker-v2.h"
-
+/*
+	Made by Team 6299 QuadX
+		- Jacob Greenway
+		- Joshua Johnson
+		- Linnea May
+*/
 float heading = 0;
 
 //Tests if the the absolute value of the val parameter is less than the threshold and returns a boolean
@@ -15,25 +21,20 @@ float valInRange(float val, float threshold = 1.0) {
 	return (abs(val) <= threshold) ? 0 : val;
 }
 
-//
 bool isInRange(float heading, float targetHeading, float threshold = 1.0) {
 	return abs(heading - targetHeading) <= threshold;
-}
-
-int getDriveDir(int power) {
-	return (power > 0) ? 1 : (power < 0) ? -1 : 0;
 }
 
 //Averages out the two paramters entered and returns a integer
 //Failsafe if either left-side motor encoder or right-side motor encoder dies
 int getEncoderAverage(int leftMotor, int rightMotor) {
-	if (abs(leftMotor) < 3) {
+	/*if (abs(leftMotor) < 3) {
 		return rightMotor;
 	}
-	else if (abs(rightMotor) < 3) {
+	if (abs(rightMotor) < 3) {
 		return leftMotor;
-	}
-	return (leftMotor + rightMotor) / 2;
+	} */
+	return leftMotor * -1;
 }
 
 //Sets the left-side drive motors to the first parameter entered and the right-side drive motors to the second parameter
@@ -68,7 +69,7 @@ void moveTo(int power, int deg, float threshold = 2.0, long time = 5000) {
 	clearTimer(T1);
 
 	if (power > 0) {
-		while (time1[T1] < time && getEncoderAverage(nMotorEncoder[motorFL], nMotorEncoder[motorBL]) < deg) {
+		while (time1[T1] < time && getEncoderAverage(nMotorEncoder[motorFL], nMotorEncoder[motorFR]) < deg) {
 			displayCenteredBigTextLine(3, "%2i", nMotorEncoder[motorBL]);
 			// Reads gyros rate of turn, mulitplies it by the time passed (20ms), and adds it to the current heading
 			heading += valInRange(HTGYROreadRot(SENSOR_GYRO), threshold) * (float)(20 / 1000.0);
@@ -81,10 +82,10 @@ void moveTo(int power, int deg, float threshold = 2.0, long time = 5000) {
 			// If not, lower the speed of the required side of the robot to adjust back to 0
 			else {
 				if (heading > 0) {
-					setMotors((power / 4) * getDriveDir(power), power);
+					setMotors((power / 4), power);
 				}
 				if (heading < 0) {
-					setMotors(power, (power / 4) * getDriveDir(power));
+					setMotors(power, (power / 4));
 				}
 			}
 			wait1Msec(20);
@@ -104,10 +105,10 @@ void moveTo(int power, int deg, float threshold = 2.0, long time = 5000) {
 			// If not, lower the speed of the required side of the robot to adjust back to 0
 			else {
 				if (heading > 0) {
-					setMotors(power, (power / 4) * getDriveDir(power));
+					setMotors(power, (power / 4));
 				}
 				if (heading < 0) {
-					setMotors((power / 4) * getDriveDir(power), power);
+					setMotors((power / 4), power);
 				}
 			}
 
@@ -120,9 +121,9 @@ void moveTo(int power, int deg, float threshold = 2.0, long time = 5000) {
 
 //The robot will turn for the degrees given in the deg parameter on a point at the power of the power parameter
 //If the method runs for more than the time parameter the method will stop for a failsafe if the gyro fails
-void turn(int power, int deg, int time = 5000) {
+void turn(int power, int deg, int time = 6000) {
 
-	// 90 Degree Modifier
+	/*// 90 Degree Modifier
 	if (abs(deg) == 90) {
 		int modifier = deg * 8/9;
 		deg = modifier;
@@ -132,14 +133,10 @@ void turn(int power, int deg, int time = 5000) {
 	else if (abs(deg) == 45) {
 		int modifier = deg * 7/9;
 		deg = modifier;
-	}
+	}*/
 
 	heading = 0;
-
-	wait1Msec(500);
-	HTGYROstartCal(SENSOR_GYRO);
-	wait1Msec(500);
-
+	wait1Msec(250);
 	clearTimer(T1);
 
 	if (deg > 0) { //if degree of turn is positive
@@ -163,7 +160,7 @@ void turn(int power, int deg, int time = 5000) {
 
 //Turns on one stopped motor for the degrees given in the deg parameter at the power of the power parameter
 //If the method runs for more than the time parameter the method will stop for a failsafe in the gyro fails
-void arcTurn(int power, int deg, int time = 2000) {
+void arcTurn(int power, int deg, int time = 7000) {
 
 	// 90 Degree Modifier
 	if (abs(deg) == 90) {
@@ -178,9 +175,8 @@ void arcTurn(int power, int deg, int time = 2000) {
 	}
 
 	heading = 0;
+	wait1Msec(250);
 	clearTimer(T1);
-	HTGYROstartCal(SENSOR_GYRO);
-
 	// Forward arcTurn
 	if (power > 0) {
 		if (deg > 0) {
@@ -221,37 +217,6 @@ void arcTurn(int power, int deg, int time = 2000) {
 	stopMotors();
 }
 
-/*void latch(bool position) {
-	if (!position) {
-		servo[servoL] = 225;
-		servo[servoR] = 0;
-	}
-	if (position) {
-		servo[servoL] = 160;
-		servo[servoR] = 83;
-	}
-}*/
-
-//Returns IR value
-int getIR(){
-	return HTIRS2readACDir(SENSOR_IR);
-}
-
-//Moves the robot until the IR value becomes greater then the IR parameter
-void moveIrUp(int speed, int IR,){
-	while(getIR() < IR){
-		setMotors(speed, speed);
-	}
-	stopMotors();
-}
-
-//Moves the robot until the IR value becomes less then the IR parameter
-void moveIrDown(int speed, int IR){
-	while(getIR() < IR){
-		setMotors(speed, speed);
-	}
-	stopMotors();
-}
 
 /*
 * Additional Functions
@@ -262,65 +227,125 @@ void moveIrDown(int speed, int IR){
 //calculate and return encoder degree values based on radius of wheel and distance of motion desired
 int getDegrees(float distance, float radius = 2.0) {
 	float circumference = 2 * PI * radius;
-	return (distance / circumference) * 1440;
+	return (distance / circumference) * -1120;
 }
 
 //alternate moveTo functionality to incorporate getDegrees automatically without requiring public use of getDegrees
-void moveToDistance(int speed, float distance, float radius, float threshold = 2.0, long time = 5000) {
-	moveTo(speed, getDegrees(radius, distance), threshold, time);
+void moveToDistance(int speed, float distance, float radius, float threshold = 0.8, long time = 5000) {
+	moveTo(speed, getDegrees(distance, radius), threshold, time);
 }
 
-//alternate moveIR functionality to ignore Up/Down direction. May or may not be practical
-void moveIR(int speed, int IR) {
-	while (getIR() != IR) {
-		setMotors(speed, speed);
-	}
-	stopMotors();
-}
-
-//experimental turn function to attempt to fix accuracy issues
-void altTurn(int power, int deg, int time = 5000) {
-
-	// 90 Degree Modifier
-/*
-	if (abs(deg) == 90) {
-		int modifier = deg * 8/9;
-		deg = modifier;
-	}
-
-	// 45 Degree Modifier
-	else if (abs(deg) == 45) {
-		int modifier = deg * 7/9;
-		deg = modifier;
-	}
-*/
+//alternate moveTo functionality to stabilize to an earlier-recorded angle (for use after moveTo or moveToDistance)
+void moveToNoCalibrate(int power, int deg, float threshold = 2.0, long time = 5000) {
 	heading = 0;
-
-	wait1Msec(500);
-	HTGYROstartCal(SENSOR_GYRO);
-	wait1Msec(500);
+	nMotorEncoder[motorFL] = 0;
+	nMotorEncoder[motorFR] = 0;
 
 	clearTimer(T1);
 
-	if (deg > 0) { //if degree of turn is positive
-		while (time1[T1] < time && abs(heading) < abs(deg)) {
+	if (power > 0) {
+		while (time1[T1] < time && getEncoderAverage(nMotorEncoder[motorFL], nMotorEncoder[motorFR]) < deg) {
+			displayCenteredBigTextLine(3, "%2i", nMotorEncoder[motorBL]);
+			// Reads gyros rate of turn, mulitplies it by the time passed (20ms), and adds it to the current heading
+			heading += valInRange(HTGYROreadRot(SENSOR_GYRO), threshold) * (float)(20 / 1000.0);
 
-			setMotors(power, -power);
-			//flipped line above and below
-			heading += HTGYROreadRot(SENSOR_GYRO) * (float)(10 / 1000.0); //decreased time to 10 ms accuracy
+			// Checks if the gyro is outside of the specified threshold (1.0)
+			if (isInRange(heading, 0, threshold)) {
+				setMotors(power, power);
+			}
 
-			wait1Msec(10); //decreased time to 10 ms accuracy
+			// If not, lower the speed of the required side of the robot to adjust back to 0
+			else {
+				if (heading > 0) {
+					setMotors((power / 4), power);
+				}
+				if (heading < 0) {
+					setMotors(power, (power / 4));
+				}
+			}
+			wait1Msec(20);
 		}
 	}
 
-	if (deg < 0) {
-		while (time1[T1] < time && abs(heading) < abs(deg)) {
+	else {
+		while (time1[T1] < time && getEncoderAverage(nMotorEncoder[motorFL], nMotorEncoder[motorFR]) > deg) {
+			// Reads gyros rate of turn, mulitplies it by the time passed (20ms), and adds it to the current heading
+			heading += valInRange(HTGYROreadRot(SENSOR_GYRO), threshold) * (float)(20 / 1000.0);
 
-		setMotors(-power, power);
+			// Checks if the gyro is outside of the specified threshold (1.0)
+			if (isInRange(heading, 0, threshold)) {
+				setMotors(power, power);
+			}
 
-		heading += HTGYROreadRot(SENSOR_GYRO) * (float)(10 / 1000.0);
+			// If not, lower the speed of the required side of the robot to adjust back to 0
+			else {
+				if (heading > 0) {
+					setMotors(power, (power / 4));
+				}
+				if (heading < 0) {
+					setMotors((power / 4), power);
+				}
+			}
 
-		wait1Msec(10);
+			wait1Msec(20);
+		}
+	}
+
+	stopMotors();
+}
+
+void moveToDifferentPower(int powerL, int powerR, int deg, float threshold = 2.0, long time = 5000) {
+	heading = 0;
+	nMotorEncoder[motorFL] = 0;
+	nMotorEncoder[motorFR] = 0;
+
+	clearTimer(T1);
+
+	if (powerL > 0 && powerR > 0) {
+		while (time1[T1] < time && getEncoderAverage(nMotorEncoder[motorFL], nMotorEncoder[motorFR]) < deg) {
+			displayCenteredBigTextLine(3, "%2i", nMotorEncoder[motorBL]);
+			// Reads gyros rate of turn, mulitplies it by the time passed (20ms), and adds it to the current heading
+			heading += valInRange(HTGYROreadRot(SENSOR_GYRO), threshold) * (float)(20 / 1000.0);
+
+			// Checks if the gyro is outside of the specified threshold (1.0)
+			if (isInRange(heading, 0, threshold)) {
+				setMotors(powerL, powerR);
+			}
+
+			// If not, lower the speed of the required side of the robot to adjust back to 0
+			else {
+				if (heading > 0) {
+					setMotors((powerL / 4), powerR);
+				}
+				if (heading < 0) {
+					setMotors(powerL, (powerR / 4));
+				}
+			}
+			wait1Msec(20);
+		}
+	}
+
+	else {
+		while (time1[T1] < time && getEncoderAverage(nMotorEncoder[motorFL], nMotorEncoder[motorFR]) > deg) {
+			// Reads gyros rate of turn, mulitplies it by the time passed (20ms), and adds it to the current heading
+			heading += valInRange(HTGYROreadRot(SENSOR_GYRO), threshold) * (float)(20 / 1000.0);
+
+			// Checks if the gyro is outside of the specified threshold (1.0)
+			if (isInRange(heading, 0, threshold)) {
+				setMotors(powerL, powerR);
+			}
+
+			// If not, lower the speed of the required side of the robot to adjust back to 0
+			else {
+				if (heading > 0) {
+					setMotors(powerL, (powerR / 4));
+				}
+				if (heading < 0) {
+					setMotors((powerL / 4), powerR);
+				}
+			}
+
+			wait1Msec(20);
 		}
 	}
 	stopMotors();
